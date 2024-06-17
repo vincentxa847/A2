@@ -42,8 +42,12 @@ Resolution parameter was set to 0.5, since clusters will be too many to granular
 immune.combined = FindNeighbors(immune.combined, reduction = "pca", dims = 1:14)
 immune.combined = FindClusters(immune.combined, resolution = 0.5)
 ```
-![image](https://github.com/vincentxa847/A2/assets/118545004/fb2fc3cf-bcc4-490c-ab39-2ad195d447e5)
+![image](https://github.com/vincentxa847/A2/assets/118545004/fb2fc3cf-bcc4-490c-ab39-2ad195d447e5)\
 *Elbow Plot to determine the number of PCs*
 
-From the UMAP coordinates and the markers of clusters, cluster 7,8,9,10,11,12,13 were removed, and the remaining clusters were annotated using markers ().
-![image](https://github.com/vincentxa847/A2/assets/118545004/846042fd-5117-489b-b5f0-48db45ad4812)
+From the UMAP coordinates and the markers of clusters, 7 small clusters were removed before generating this annotated UMAP and the remaining cluster 0-6 were annotated using genes that have significant differential positive  expression in the assigned cluster.\
+![image](https://github.com/vincentxa847/A2/assets/118545004/846042fd-5117-489b-b5f0-48db45ad4812)\
+*Annotated UMAP*
+
+## Result
+
