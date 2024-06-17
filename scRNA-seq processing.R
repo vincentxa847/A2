@@ -35,3 +35,69 @@ KO1.data = subset(KO1.data, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & 
 WT1.data = subset(WT1.data, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
 WT2.data = subset(WT2.data, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
 WT3.data = subset(WT3.data, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+
+#### Setup the Seurat objects ####
+# Create a list for Seurat object
+merge.object =  list(KO1.data,WT1.data,WT2.data,WT3.data)
+
+#### Normalize and identify variable features for each dataset in merge.object independently ####
+gamma_delta.list <- lapply(X = merge.object, FUN = function(x) {
+  x <- NormalizeData(x)
+  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
+})
+features <- SelectIntegrationFeatures(object.list = gamma_delta.list)
+
+#### Perform integration (Seurat default) ####
+# Finding anchors across 4 datasets and using these anchors to integrate them into 1 Seurat object
+# identify anchors (time consuming)
+immune.anchors = FindIntegrationAnchors(object.list = gamma_delta.list, anchor.features = features)
+# this command creates an 'integrated' data assay
+immune.combined = IntegrateData(anchorset = immune.anchors)
+
+#### Perform an integrated analysis ####
+# specify that we will perform downstream analysis on the corrected data (store in @assays)
+DefaultAssay(immune.combined) = "integrated"
+
+#### Standard workflow for PCA, visualization and clustering ####
+## Scaling the data
+immune.combined = ScaleData(immune.combined, verbose = FALSE)
+
+## PCA, linear dimensional reduction
+# npcs specifies Total Number of PCs to compute and store (50 by default)
+immune.combined = RunPCA(immune.combined, npcs = 30, verbose = FALSE)
+
+# Visualize the result of PCA
+# VizDimLoadings : Visualize top genes associated with reduction components
+VizDimLoadings(immune.combined, dims = 1:2, reduction = "pca")
+
+# DimPlot: each point is a cell 
+DimPlot(immune.combined, reduction = "pca")
+# DimHeatmap : draw cell and features(genes) 
+# Both cells and genes are sorted by their principal component scores
+DimHeatmap(immune.combined, dims = 1:2, cells = 500, balanced = TRUE)
+
+## Determine the ‘dimensionality’ of the dataset that contain useful information
+# From the result of ElbowPlot and JackStrawPlot, 14 components are choosen to include  
+ElbowPlot(immune.combined)
+# JackStraw is time-consuming
+# immune.combined = JackStraw(immune.combined, num.replicate = 100)
+# immune.combined = ScoreJackStraw(immune.combined, dims = 1:20)
+# JackStrawPlot(immune.combined, dims = 1:20)
+
+## Clustering, graph-based clustering approach
+# dimension is determined by ElbowPlot or JackStrawPlot 
+# resolution sets the ‘granularity’ of the downstream clustering, affect the number of clusters
+immune.combined = FindNeighbors(immune.combined, reduction = "pca", dims = 1:14)
+immune.combined = FindClusters(immune.combined, resolution = 0.5)
+
+## UMAP, non-linear dimensional reduction
+# reduction can specified PCA as input and therefore speed up the UMAP  
+immune.combined = RunUMAP(immune.combined, reduction = "pca", dims = 1:30)
+
+## Visualization of UMAP
+# p1 using @meta.data[["orig.ident"]] to group, this attribute stores the "WT" and "KO" identifiers 
+# from corresponding datasets
+# p2 using default  "ident" to group
+p1 = DimPlot(immune.combined, reduction = "umap", group.by = "orig.ident") 
+p2 = DimPlot(immune.combined, reduction = "umap", group.by = "ident", label = TRUE, repel = TRUE) 
+p1 + p2
