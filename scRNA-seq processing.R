@@ -221,3 +221,33 @@ cluster.5.markers = FindMarkers(immune.combined, ident.1 = 5, ident.2 = NULL, on
 # From the analysis of cluster5 markers, it was observed that markers in cluster 5 also have higher expression in cluster 2
 VlnPlot(immune.combined.filtered, features = c("Gzma","Ccl5","Ccl4","Klra7","Klre1"))
 
+#### Assigning markergenes to clusters for annotation ####
+# marker selected for each cluster was determined by p value and LogFC of the DE analysis (FindMarkers)
+new.cluster.ids = c("Cd40lg", "Scart2", "Xcl1", "Smc4", "Scart1", "Klra7","Ikzf2")
+names(new.cluster.ids) = levels(immune.combined.filtered)
+immune.combined.filtered.renamed = RenameIdents(immune.combined.filtered, new.cluster.ids)
+
+# Visualize the result
+p1 = DimPlot(immune.combined.filtered.renamed, reduction = "umap", group.by = "orig.ident") 
+p2 = DimPlot(immune.combined.filtered.renamed, reduction = "umap", group.by = "ident", label = TRUE, repel = TRUE) 
+p1 + p2
+
+# From the plot below, it can be seen that cluster "Scart1", "Cd40lg" and "Scart2" contain cells from WT and KO datasets
+# It is decided to use cluster "Cd40lg" for further DE analysis
+DimPlot(immune.combined.filtered.renamed, reduction = "umap", split.by = "orig.ident")
+
+#### DE analysis with cluster "Cd40lg" ####
+# Using subset to select cells from identity class "Cd40lg"
+Cd40lg = subset(immune.combined.filtered.renamed, idents = "Cd40lg")
+
+# Change the identity class from "Cd40lg" to "WT" and "KO"
+Idents(Cd40lg) = "orig.ident"
+
+# Peform DE analysis using FindMarkers function (select only up-regulate genes)
+# Note that ident.1 is KO to find up-regulate (only.pos = TRUE) genes in KO when comparing with WT 
+# It will return a dataframe with gene name as row name and 5 columns, 
+# using avg_log2FC (log fold-change of the average expression between the two groups) and
+# p_val_adj (Adjusted p-value, based on Bonferroni correction) for requirement p-values <0.01 and logFC >0.5
+Cd40lg.KO_affected = FindMarkers(Cd40lg, ident.1 = "KO", ident.2 = "WT",only.pos = TRUE)
+# Two genes, Areg and Gzmb
+Cd40lg.KO_affected_filtered = subset(Cd40lg.KO_affected,avg_log2FC > 0.5 & p_val_adj <0.01) 
