@@ -1,5 +1,3 @@
-#### Task 3 ####
-
 library(Seurat)
 library(patchwork) # for combing plots
 library(metap) # for "FindConservedMarkers"
