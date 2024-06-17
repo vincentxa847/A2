@@ -56,8 +56,23 @@ From the UMAP coordinates and the markers of clusters, 7 small clusters were rem
 ![image](https://github.com/vincentxa847/A2/assets/118545004/846042fd-5117-489b-b5f0-48db45ad4812)\
 *Annotated UMAP*
 
-### Datasets used
-10X Chromium dataset of a γδ T cell dataset with three wild type (WT) runs and one knock out (KO). The KO is from a β2 integrin deficient mouse. 
+Pseudotime Analysis of main clusters in the WT datasets was performed using [Slingshot](https://doi.org/10.1186/s12864-018-4772-0).
+```
+# Set the sce object 
+sce = as.SingleCellExperiment(WT, assay = "RNA")
+
+# Run slingshot with UMAP embeddings
+sce_UMAP = slingshot(sce, clusterLabels = 'seurat_clusters', reducedDim = 'UMAP')
+summary(sce_UMAP$slingPseudotime_1)
+
+# Plot the dimensionality reduction results and the Slingshot output on a plot  
+plot(reducedDims(sce_UMAP)$UMAP, col = plotcol, pch=16, asp = 1, xlab = "UMAP 1", ylab = "UMAP 2", main = "with UMAP embeddings")
+lines(SlingshotDataSet(sce_UMAP), lwd=2, col='black') 
+
+```
+
+ ### Datasets used
+10X Chromium dataset of a γδ T cell dataset with three wild type (WT) runs and one knock out (KO). The KO is from a β2 integrin deficient mouse.
 
 ## Result
 Cluster in the upper left corner with 3 subclusters annotated with “Xcl1” ,“Smc4” and “Ikzf2” has featured markers “Cd27” ,“Cd28” ,“Sell” ,“Ccr7” ,“Plac8” and 
@@ -77,4 +92,14 @@ WT and KO datasets integrate better using Harmony compared to the default Seurat
 
 [MAST](https://doi.org/10.1186/s13059-015-0844-5), was adopted to test DE genes, which is a two-part generalized linear model to model the rate of expression of various transcripts and the positive expression mean. It also takes the cellular detection rate into account to deal with biological factors such as cell volume of different cells and technical assay variability. 
 The number of DE genes remains the same comparing with default Wilcoxon test, but the P-values and the order of DE genes change. Overall, using Harmony as integration method is better in this dataset. 
+
+Trajectory of main clusters in the WT datasets was generated using Slingshot. 
+Single cell linkage of WT datasets is presented in a smooth curve. 
+![image](https://github.com/vincentxa847/Identify_Different_Cell_Types_by_Exploring_scRNA-seq_datasets_with_Seurat_and_Slingshot/assets/118545004/dcd2c888-d42a-47a2-8180-7a0646177124)
+*Trajectory of main clusters in the WT datasets. A smooth curve across two main clusters CD27+ IFNγ-producing γδ T cells and CD27- IL-17-producing γδ T cells*
+  
+Previous result of WT data shows that it composed of multiple cell types, we can understand how cells change state by inferencing the cell state dynamics ([pseudotemporal reconstruction](https://doi.org/10.1038/s41576-020-0223-2)).
+From the clusters position of the cells (presented in different section of colour) and the single-trajectory data (curve), it is speculated that cell state changes in IL-17-producing γδ T cells and CD27+ IFNγ-producing γδ T cells, following the direction of cluster “Ikzf2” , “Smc4” , “Xcl1” , “Scart2”, “Cd40lg” to “Scart1”. 
+The differentiation of γδ subsets determined by many factors such as [transcriptional regulation](https://doi.org/10.3389/fimmu.2013.00431) and [histone modification](https://doi.org/10.1038/ni.2702). 
+The direction of cell linkage is speculated to start from Ikzf2 toward Scart1. [Sox4 is a featured marker of cluster “Ikzf2”, which forms a gene regulatory network for differentiation of γδ T cells](https://doi.org/10.1016/j.immuni.2013.01.010) and therefore is deduced to be the first subcluster differentiate in γδ T cells.
 
