@@ -55,7 +55,7 @@ immune.anchors = FindIntegrationAnchors(object.list = gamma_delta.list, anchor.f
 immune.combined = IntegrateData(anchorset = immune.anchors)
 
 #### Perform an integrated analysis ####
-# specify that we will perform downstream analysis on the corrected data (store in @assays)
+# specify that we will perform downstream analysis on the corrected data (store in 'integrated' assays)
 DefaultAssay(immune.combined) = "integrated"
 
 #### Standard workflow for PCA, visualization and clustering ####
@@ -101,3 +101,123 @@ immune.combined = RunUMAP(immune.combined, reduction = "pca", dims = 1:30)
 p1 = DimPlot(immune.combined, reduction = "umap", group.by = "orig.ident") 
 p2 = DimPlot(immune.combined, reduction = "umap", group.by = "ident", label = TRUE, repel = TRUE) 
 p1 + p2
+
+#### Finding biomarkers of cluster ####
+# DE analysis is performed here
+# find markers for every cluster that compares to all remaining cells, report only the positive ones
+# set the pct cutoff to only test genes that are detected in a minimum fraction of cells 
+# set the logfc cutoff to test genes with at least X-fold difference (log-scale) between groups 
+cluster.markers = FindAllMarkers(immune.combined, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+# take the genes show highest logFC different between groups
+cluster.markers_top_8 = cluster.markers %>%
+  group_by(cluster) %>%
+  slice_max(n = 8, order_by = avg_log2FC)
+
+## Visualize the markers
+# select markers to visualize for each clusters
+for (x in c(0,1,2,3,4,5,6,7,8,9,10,11,12,13)) {
+  name = paste("cluster.",".top8",sep=as.character(x)) # assign the variable name, it will look like "cluster.0.top8"
+  assign(name, as.factor(subset(cluster.markers_top_8, cluster == as.character(x))[,'gene']))
+}
+
+# VlnPlot -- showing gene names to better investigate the function of genes
+# cluster 0
+VlnPlot(immune.combined, features = c("S100a4", "Il17a", "Tmem176a", "Tmem176b", "S100a6", "Cxcr6", "Ccr2", "Maf"))
+# cluster 1
+VlnPlot(immune.combined, features = c("5830411N06Rik", "Rgcc", "Ccr6", "Abi3bp", "Acsbg1", "Il7r", "S100a4", "Crip1") )
+# cluster 2
+VlnPlot(immune.combined, features = c("Ly6c2", "Ctla2a", "Klrc1", "Xcl1", "Klrc2", "Ms4a4b", "Ccl5", "Hopx") )
+# cluster 3
+VlnPlot(immune.combined, features = c("Gm8369", "Ccr7", "Dapl1", "Smc4", "Ms4a6b", "Slamf6", "Cd8b1", "Sell") )
+# cluster 4
+VlnPlot(immune.combined, features = c("Trdv4", "Cd163l1", "Ckb", "Cxcr6", "Serpinb1a", "Krt83", "Capg", "Tcrg-C1") )
+# cluster 5
+VlnPlot(immune.combined, features = c("Gzma", "Ccl5", "Klra7", "Klre1", "Nkg7", "Ccl4", "Klrd1", "Zeb2") )
+# cluster 6
+VlnPlot(immune.combined, features = c("Ikzf2", "Sox4", "Smc4", "Slamf6", "Ccr9", "Ifi27l2a", "Lef1", "Cd27")  )
+# cluster 7 -- lysozyme 2 (Lyz2), apolipoprotein E (Apoe), cytochrome b-245 beta chain (Cybb), related to macrophage
+VlnPlot(immune.combined, features = c("Lyz2", "Apoe", "Ifitm3", "Cst3", "Lst1", "Cybb", "Cd74", "Gngt2")  )
+# cluster 8 -- protein tyrosine phosphatase family (Ptprb), endothelial PAS domain protein 1 (Epas1), related to endothelial cell
+VlnPlot(immune.combined, features = c("Gsn", "Cd36", "Calcrl", "Ptprb", "Ramp2", "Epas1", "Egfl7", "Cd93")  )
+# cluster 9 -- granzyme C (Gzmc), expressed by activated T cells
+VlnPlot(immune.combined, features = c("Xcl1", "Gzmb", "Gzmc", "Tyrobp", "Fcer1g", "Cd7", "Rgs1", "Cd160")  )
+# cluster 10 -- chromatin binding activity (Pclaf),inhibitor of apoptosis (Birc5), H2A clustered histone 23 (Hist1h2ap)
+VlnPlot(immune.combined, features = c("Stmn1", "Hmgb2", "Gzma", "Hist1h2ap", "Birc5", "Pclaf", "Hmgn2", "Klra7") )
+# cluster 11 -- S100 family of proteins containing 2 EF-hand calcium-binding motifs (S100a8,S100a9), family of interferon induced antiviral proteins (Ifitm1)
+VlnPlot(immune.combined, features = c("S100a8", "S100a9", "Ifitm1", "Il1b", "Ccl6", "Ccl3", "Ccl4", "Tyrobp")  )
+# cluster 12 -- B lymphocyte antigen receptor (Cd79a), immunoglobulin kappa constant, located in blood microparticle and extracellular exosome (Igkc)
+VlnPlot(immune.combined, features = c("Igkc", "Cd74", "H2-Eb1", "Cd79a", "Ly6d", "Ighm", "Ebf1", "H2-Ab1")  )
+# cluster 13 -- Enables adrenomedullin binding activity (Calcrl), integral membrane proteins (Cldn5), related to endothelial cells
+VlnPlot(immune.combined, features = c("Ramp2", "Calcrl", "Cldn5", "Igfbp7", "Cdh5", "Tmem100", "Cd36", "Cyp4b1")  )
+
+## Filtering away noise
+# Based on the result of UMAP (small clusters) and cluster' markers, cluster 7,8,9,10,11,12,13 are filtered away
+immune.combined.filtered = subset(immune.combined,idents = c(7,8,9,10,11,12,13),invert = TRUE)
+# Visualize the result
+p1 = DimPlot(immune.combined.filtered, reduction = "umap", group.by = "orig.ident") 
+p2 = DimPlot(immune.combined.filtered, reduction = "umap", group.by = "ident", label = TRUE, repel = TRUE) 
+p1 + p2
+
+# From the result of Vlnplot and UMAP, it is spectulated that cluster 0,1,4 , cluster 2,3,6 are related cells
+# and need to conduct in-cluster comparison to identify the sub-populations
+# Using "FindMarkers" to do (finding markers between two groups)
+
+#### Markers of cluster 0,1,4 ####
+
+# Combining the logFC and visualization result (expression of markers in every cluster) to determine featured markers
+
+# Finding markers of cluster 0.1.4
+# Featured markers of cluster 0.1.4 were selected, which are "Il17a" "Il17f" "Fos" "Zfp36" "Gadd45b"
+cluster.0.1.4.markers = FindMarkers(immune.combined.filtered, ident.1 = c(0,1,4), ident.2 = NULL, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+# Finding markers of cluster0, cluster1 and cluster4 separately
+for (x in c(0,1,4)){
+  vector = c(0,1,4)
+  name = paste("cluster.",".markers",sep = as.character(x))
+  assign(name, FindMarkers(immune.combined.filtered, ident.1 = x, ident.2 = vector[!vector == x], only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25))
+}
+
+# Featured markers of cluster 0 were selected, which are "Areg" "Stmn2" "Cd40lg"
+# But Areg and Stmn2 are highly express in cluster 0.1.4, it seems that there no specific marker for cluster 0
+
+# Featured markers of cluster 1 were selected, which are "5830411N06Rik"(Scart2) "Ccr6" "Ccr10" "Tsc22d1"
+# "5830411N06Rik" "Ccr6" "Ccr10" are also highly expressed in cluster 0, and "Tsc22d1" is also highly expressed in cluster 6
+
+# Featured markers of cluster 4 were selected, which are "Cd163l1" "Trdv4" "Ckb" "Krt83"
+
+
+VlnPlot(immune.combined.filtered, features = c("Il17a", "Il17f", "Fos", "Zfp36", "Gadd45b"), n = 5)
+
+#### Markers of cluster 2,3,6 ####
+
+# Combining the logFC and visualization result (expression of markers in every cluster) to determine featured markers
+
+# Finding markers of cluster 2,3,6 
+# Featured markers of cluster 2,3,6 were selected, which are "Cd27" "Sell" "Cd28" "Ccr7" "Plac8" and "Ly6c2"
+cluster.2.3.6.markers = FindMarkers(immune.combined.filtered, ident.1 = c(2,3,6), ident.2 = NULL, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+for (x in c(2,3,6)){
+  vector = c(2,3,6)
+  name = paste("cluster.",".markers",sep = as.character(x))
+  assign(name, FindMarkers(immune.combined.filtered, ident.1 = x, ident.2 = vector[!vector == x], only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25))
+}
+
+# Featured markers of cluster 2 were selected, which are "Ctla2a" "Xcl1" "Klrc1" "Klrc2" and "Tyrobp"
+# From the analysis of cluster2 marker, it was observed cluster 2 and 5 share similiar markers
+
+# Featured markers of cluster 3 were selected, which are "Ccr7" "Dapl1" "Cd8b1" "Smc4" and "Themis"
+
+# Featured markers of cluster 6 were selected, which are "Ikzf2" "Sox4" "Ccr9" "Trbc2" and "Tsc22d1"
+# From the analysis of cluster2 marker, it was observed cluster 6 and 3 share similiar markers
+
+
+VlnPlot(immune.combined.filtered, features = c("Cd27", "Sell", "Cd28", "Ccr7", "Plac8", "Ly6c2"))
+
+
+#### cluster 5 ####
+cluster.5.markers = FindMarkers(immune.combined, ident.1 = 5, ident.2 = NULL, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+# Featured markers of cluster 5 were selected, which are "Gzma"  "Ccl5"  "Ccl5"  "Ccl4" "Klra7" "Klre1" 
+
+# From the analysis of cluster5 markers, it was observed that markers in cluster 5 also have higher expression in cluster 2
+VlnPlot(immune.combined.filtered, features = c("Gzma","Ccl5","Ccl4","Klra7","Klre1"))
+
